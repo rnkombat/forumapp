@@ -1,0 +1,59 @@
+# docker-compose.dev.yml
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: forumapp
+    ports: ["5432:5432"]
+    volumes: [ "pgdata:/var/lib/postgresql/data" ]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d forumapp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rails_api:
+    image: ruby:3.3
+    working_dir: /app
+    volumes: [ "./services/rails_api:/app" ]
+    environment:
+      RAILS_ENV: development
+      DATABASE_URL: postgres://app:app@db:5432/forumapp
+    command: bash -lc "bundle install && bin/rails db:prepare && bin/rails s -b 0.0.0.0 -p 3000"
+    depends_on: { db: { condition: service_healthy } }
+    ports: ["3001:3000"]
+    profiles: ["rails"]
+
+  spring_api:
+    image: gradle:8.8-jdk21
+    working_dir: /home/gradle/app
+    volumes: [ "./services/spring_api:/home/gradle/app" ]
+    command: bash -lc "./gradlew bootRun --no-daemon"
+    depends_on: { db: { condition: service_started } }
+    ports: ["3002:8080"]
+    profiles: ["spring"]
+
+  express_api:
+    image: node:20
+    working_dir: /app
+    volumes: [ "./services/express_api:/app" ]
+    environment:
+      PORT: 3000
+    command: bash -lc "npm install && npm start"
+    depends_on: { db: { condition: service_started } }
+    ports: ["3003:3000"]
+    profiles: ["express"]
+
+  frontend:
+    image: node:20
+    working_dir: /app
+    volumes: [ "./frontend:/app" ]
+    environment:
+      VITE_API_BASE_URL: http://localhost:3001   # ← Railsとつなぐ例
+    command: bash -lc "npm install && npm run dev -- --host 0.0.0.0"
+    ports: ["5173:5173"]
+    profiles: ["rails","spring","express"]
+volumes:
+  pgdata:
