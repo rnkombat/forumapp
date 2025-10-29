@@ -8,6 +8,7 @@ const cors = require('cors');
 
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
+const topicsRouter = require('./routes/topics');
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+app.use('/api/topics', topicsRouter);
 
 app.get('/health', async (req, res, next) => {
   try {

@@ -1,0 +1,133 @@
+.container {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 24px;
+  padding: 24px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+.section {
+  display: block;
+}
+
+.h2 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.btnPrimary {
+  border: 0;
+  background: #2563eb; /* blue-600 */
+  color: #fff;
+}
+
+.btnDanger {
+  border: 0;
+  background: #c0392b;
+  color: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.listReset {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.topicItem {
+  padding: 8px 12px;
+  margin-top: 8px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #fff;
+  transition: background 120ms ease-in-out, border-color 120ms ease-in-out;
+}
+
+.topicItemActive {
+  background: #f0f6ff;
+  border-color: #c7ddff;
+}
+
+.topicTitle {
+  font-weight: 700;
+}
+
+.topicSummary {
+  font-size: 12px;
+  color: #555;
+}
+
+.topicMeta {
+  font-size: 12px;
+  color: #888;
+}
+
+.formRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.paging {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.postItem {
+  padding: 12px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: #fff;
+}
+
+.postHeader {
+  font-size: 12px;
+  color: #777;
+}
+
+.postBody {
+  margin-top: 4px;
+  word-break: break-word;
+}
+
+.postTime {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.postActions {
+  margin-top: 6px;
+}
+
+.select {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #fff;
+}
