@@ -6,10 +6,11 @@ type TopicsPaneProps = {
 	topics: Topic[];
 	activeId?: number;
 	onCreate: () => void;
+	onDelete: (topic: Topic) => void;
 	loading: boolean;
 };
 
-export const TopicsPane = ({ topics, activeId, onCreate, loading }: TopicsPaneProps) => {
+export const TopicsPane = ({ topics, activeId, onCreate, onDelete, loading }: TopicsPaneProps) => {
 	return (
 		<section className="panel">
 			<header className="panelHeader">
@@ -27,11 +28,29 @@ export const TopicsPane = ({ topics, activeId, onCreate, loading }: TopicsPanePr
 							key={topic.id}
 							className={`topicItem ${activeId === topic.id ? "active" : ""}`}
 						>
-							<Link to={`/topics/${topic.id}`}>
-								<div className="title">{topic.title}</div>
-								<div className="summary">{topic.summary ?? "—"}</div>
-								<div className="count">posts: {topic.posts_count}</div>
-							</Link>
+							<div className="topicRow">
+								<Link to={`/topics/${topic.id}`} className="topicLink">
+									<div className="title">
+										{topic.title}
+										{topic.locked ? <span className="badge badge-locked">ロック中</span> : null}
+									</div>
+									<div className={`summary ${topic.summary ? "" : "muted"}`}>
+										{topic.summary ?? "概要はありません"}
+									</div>
+									<div className="count">投稿数: {topic.posts_count}</div>
+								</Link>
+								<button
+									className="btn-danger topicDeleteBtn"
+									onClick={(event) => {
+									// Link の遷移を止めて削除処理だけを行う
+									event.preventDefault();
+									event.stopPropagation();
+									onDelete(topic);
+								}}
+								>
+									削除
+								</button>
+							</div>
 						</li>
 					))
 				)}
@@ -39,3 +58,4 @@ export const TopicsPane = ({ topics, activeId, onCreate, loading }: TopicsPanePr
 		</section>
 	);
 };
+
