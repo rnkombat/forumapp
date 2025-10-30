@@ -1,201 +1,273 @@
-import { useEffect, useMemo, useState } from "react";
-import { Routes, Route, Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import type { Topic, Post } from "./types";
-import { getTopics, getPosts, createTopic, createPost, deletePost } from "./api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 
-function TopicsPane({
-  topics, activeId, onCreate,
-}: { topics: Topic[]; activeId?: number; onCreate: () => void; }) {
-  return (
-    <section className="panel">
-      <h2>Topics</h2>
-      <button className="btn-primary" onClick={onCreate}>+ New Topic</button>
-      <ul className="list">
-        {topics.map((t) => (
-          <li key={t.id} className={`topicItem ${activeId === t.id ? "active" : ""}`}>
-            <Link to={`/topics/${t.id}`}>
-              <div className="title">{t.title}</div>
-              <div className="summary">{t.summary ?? "—"}</div>
-              <div className="count">posts: {t.posts_count}</div>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
+import { createTopic, deleteTopic, getTopic, getTopics } from "./api";
+import { PostsPane } from "./components/PostsPane";
+import { TopicsPane } from "./components/TopicsPane";
+import { usePaginationParams } from "./hooks/usePaginationParams";
+import type { Topic } from "./types";
 
-function PostsPane({
-  topic, limit, offset, setLimit, setOffset,
-}: {
-  topic: Topic | null; limit: number; offset: number;
-  setLimit: (n: number) => void; setOffset: (n: number) => void;
-}) {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [newBody, setNewBody] = useState("");
-  const navigate = useNavigate();
-  const [sp] = useSearchParams();
+const DEFAULT_PAGINATION = { limit: 10, offset: 0 };
 
-  useEffect(() => {
-    if (!topic) return;
-    setLoading(true);
-    (async () => {
-      const data = await getPosts(topic.id, limit, offset);
-      setPosts(data.items);
-      setTotal(data.total);
-      setLoading(false);
-    })();
-  }, [topic?.id, limit, offset]);
+const parseTopicId = (id?: string) => {
+	const numericId = Number(id);
 
-  const totalPages = Math.max(1, Math.ceil(total / limit));
-  const currentPage = Math.floor(offset / limit) + 1;
-  const canPrev = currentPage > 1;
-  const canNext = currentPage < totalPages;
+	return Number.isFinite(numericId) ? numericId : undefined;
+};
 
-  const syncQuery = (next: {limit?: number; offset?: number}) => {
-    const q = new URLSearchParams(sp);
-    if (next.limit !== undefined) q.set("limit", String(next.limit));
-    if (next.offset !== undefined) q.set("offset", String(next.offset));
-    navigate({ search: `?${q.toString()}` }, { replace: true });
-  };
+// トップページ: トピック一覧と新規作成のみを表示
+const TopicsPage = () => {
+	const [topics, setTopics] = useState<Topic[]>([]);
+	const [loadingTopics, setLoadingTopics] = useState(true);
+	const isMountedRef = useRef(true);
 
-  const prevPage = () => { if (canPrev) { setOffset(offset - limit); syncQuery({ offset: offset - limit }); } };
-  const nextPage = () => { if (canNext) { setOffset(offset + limit); syncQuery({ offset: offset + limit }); } };
+	const refreshTopics = useCallback(async () => {
+		const data = await getTopics();
 
-  const handleCreatePost = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!topic) return;
-    const text = newBody.trim();
-    if (!text) return;
-    await createPost(topic.id, text);
-    setNewBody("");
-    const data = await getPosts(topic.id, limit, offset);
-    setPosts(data.items);
-    setTotal(data.total);
-  };
+		if (!isMountedRef.current) {
+			return;
+		}
 
-  const handleDeletePost = async (p: Post) => {
-    if (!window.confirm(`Delete post #${p.id}?`)) return;
-    await deletePost(p.topic_id, p.id);
-    const data = await getPosts(p.topic_id, limit, offset);
-    setPosts(data.items);
-    setTotal(data.total);
-  };
+		setTopics(data);
+	}, []);
 
-  return (
-    <section className="panel">
-      <h2>Posts {topic ? `in #${topic.id}` : ""}</h2>
-      {!topic ? (
-        <p>Select a topic</p>
-      ) : (
-        <>
-          <form onSubmit={handleCreatePost} className="formRow">
-            <input
-              value={newBody}
-              onChange={(e) => setNewBody(e.target.value)}
-              placeholder="Write a post..."
-              className="input"
-            />
-            <button type="submit" className="btn-primary">Post</button>
-          </form>
+	useEffect(() => {
+		isMountedRef.current = true;
 
-          <div className="toolbar">
-            <button onClick={prevPage} disabled={!canPrev}>Prev</button>
-            <span>Page {currentPage} / {totalPages} (total {total})</span>
-            <button onClick={nextPage} disabled={!canNext}>Next</button>
-            <select
-              value={limit}
-              onChange={(e) => {
-                const n = Number(e.target.value);
-                setLimit(n); setOffset(0); syncQuery({ limit: n, offset: 0 });
-              }}
-            >
-              {[10, 20, 50, 100].map((n) => (
-                <option key={n} value={n}>{n}/page</option>
-              ))}
-            </select>
-          </div>
+		const loadTopics = async () => {
+			if (!isMountedRef.current) {
+				return;
+			}
 
-          {loading ? (
-            <p>Loading posts...</p>
-          ) : posts.length === 0 ? (
-            <p>No posts yet.</p>
-          ) : (
-            <ul className="list">
-              {posts.map((p) => (
-                <li key={p.id} className="postItem">
-                  <div className="meta">#{p.id} • topic:{p.topic_id}</div>
-                  <div style={{ marginTop: 4 }}>{p.body}</div>
-                  <div className="time">
-                    {new Date(p.created_at).toLocaleString()}
-                  </div>
-                  <div className="actions">
-                    <button className="btn-danger" onClick={() => handleDeletePost(p)}>Delete</button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
-    </section>
-  );
-}
+			setLoadingTopics(true);
 
-function Root() {
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [loadingTopics, setLoadingTopics] = useState(true);
-  const [sp] = useSearchParams();
-  const { id } = useParams(); // /topics/:id
-  const activeId = id ? Number(id) : undefined;
+			try {
+				await refreshTopics();
+			} catch (error) {
+				console.error("topics fetch failed", error);
+				if (isMountedRef.current) {
+					setTopics([]);
+				}
+			} finally {
+				if (isMountedRef.current) {
+					setLoadingTopics(false);
+				}
+			}
+		};
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await getTopics();
-        setTopics(data);
-      } finally {
-        setLoadingTopics(false);
-      }
-    })();
-  }, []);
+		loadTopics();
 
-  const [limit, setLimit] = useState(() => Number(sp.get("limit") ?? 10));
-  const [offset, setOffset] = useState(() => Number(sp.get("offset") ?? 0));
+		return () => {
+			isMountedRef.current = false;
+		};
+	}, [refreshTopics]);
 
-  const activeTopic = useMemo(
-    () => topics.find(t => t.id === activeId) ?? null,
-    [topics, activeId]
-  );
+	const handleCreateTopic = useCallback(async () => {
+		const rawTitle = window.prompt("新しいスレッドのタイトルは？");
 
-  const handleCreateTopic = async () => {
-    const title = window.prompt("New topic title?");
-    if (!title || !title.trim()) return;
-    const summaryRaw = window.prompt("Summary (optional)") ?? "";
-    const summary = summaryRaw.trim() ? summaryRaw.trim() : null;
-    const t = await createTopic(title.trim(), summary);
-    setTopics((prev) => [t, ...prev]);
-  };
+		if (!rawTitle) {
+			return;
+		}
 
-  return (
-    <div className="layout">
-      <TopicsPane topics={topics} activeId={activeId} onCreate={handleCreateTopic} />
-      <PostsPane topic={activeTopic} limit={limit} offset={offset} setLimit={setLimit} setOffset={setOffset} />
-    </div>
-  );
-}
+		const title = rawTitle.trim();
+
+		if (!title) {
+			return;
+		}
+
+		const rawSummary = window.prompt("概要（任意）") ?? "";
+		const summary = rawSummary.trim() ? rawSummary.trim() : null;
+		const created = await createTopic(title, summary);
+
+		if (!isMountedRef.current) {
+			return;
+		}
+
+		// 取得結果を先頭に差し込んで一覧を即時更新
+		setTopics((previous) => [created, ...previous]);
+
+		try {
+			await refreshTopics();
+		} catch (error) {
+			console.error("topics refresh failed after create", error);
+		}
+	}, [refreshTopics]);
+
+	const handleDeleteTopic = useCallback(
+		async (topic: Topic) => {
+			if (!window.confirm(`「${topic.title}」を削除しますか？`)) {
+				return;
+			}
+
+			try {
+				await deleteTopic(topic.id);
+
+				if (!isMountedRef.current) {
+					return;
+				}
+
+				setTopics((previous) => previous.filter((item) => item.id !== topic.id));
+				await refreshTopics();
+			} catch (error) {
+				console.error("topic delete failed", error);
+				window.alert("スレッドの削除に失敗しました。");
+			}
+		},
+		[refreshTopics],
+	);
+
+	return (
+		<div className="page">
+			<TopicsPane
+				topics={topics}
+				activeId={undefined}
+				onCreate={handleCreateTopic}
+				onDelete={handleDeleteTopic}
+				loading={loadingTopics}
+			/>
+		</div>
+	);
+};
+
+// スレッドページ: 投稿一覧と操作を表示
+const TopicDetailPage = () => {
+	const { id } = useParams();
+	const navigate = useNavigate();
+	const topicId = parseTopicId(id);
+	const [topic, setTopic] = useState<Topic | null>(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+	const isMountedRef = useRef(true);
+	const previousTopicIdRef = useRef<number | undefined>(undefined);
+	const { limit, offset, setOffset } = usePaginationParams(DEFAULT_PAGINATION);
+
+	const loadTopic = useCallback(async () => {
+		if (!topicId) {
+			if (isMountedRef.current) {
+				setTopic(null);
+				setError("無効なスレッドIDです。");
+				setLoading(false);
+			}
+			return;
+		}
+
+		if (isMountedRef.current) {
+			setLoading(true);
+			setError(null);
+		}
+
+		try {
+			const data = await getTopic(topicId);
+
+			if (!isMountedRef.current) {
+				return;
+			}
+
+			setTopic(data);
+		} catch (err) {
+			console.error("topic fetch failed", err);
+
+			if (isMountedRef.current) {
+				const fallback = err instanceof Error ? err.message : "スレッドの取得に失敗しました。";
+				const message = fallback === "Not Found" ? "スレッドが見つかりません。" : fallback;
+				setError(message);
+				setTopic(null);
+			}
+		} finally {
+			if (isMountedRef.current) {
+				setLoading(false);
+			}
+		}
+	}, [topicId]);
+
+	useEffect(() => {
+		isMountedRef.current = true;
+		loadTopic();
+
+		return () => {
+			isMountedRef.current = false;
+		};
+	}, [loadTopic]);
+
+	useEffect(() => {
+		if (previousTopicIdRef.current === topicId) {
+			return;
+		}
+
+		previousTopicIdRef.current = topicId ?? undefined;
+
+		if (offset !== 0) {
+			setOffset(0);
+		}
+	}, [topicId, offset, setOffset]);
+
+	const handleDeleteTopic = useCallback(async () => {
+		if (!topicId || !topic) {
+			return;
+		}
+
+		if (!window.confirm(`「${topic.title}」を削除しますか？`)) {
+			return;
+		}
+
+		try {
+			await deleteTopic(topicId);
+			window.alert("スレッドを削除しました。");
+			navigate("/topics");
+		} catch (err) {
+			console.error("topic delete failed", err);
+			window.alert("スレッドの削除に失敗しました。");
+		}
+	}, [navigate, topic, topicId]);
+
+	return (
+		<div className="page topicDetailPage">
+			<div className="pageHeader">
+				<Link className="backLink" to="/topics">← トピック一覧に戻る</Link>
+				{topic ? (
+					<button className="btn-danger" onClick={handleDeleteTopic}>スレッドを削除</button>
+				) : null}
+			</div>
+			{loading ? (
+				<section className="panel">
+					<p>スレッドを読み込み中です…</p>
+				</section>
+			) : error ? (
+				<section className="panel">
+					<p>{error}</p>
+				</section>
+			) : !topic ? (
+				<section className="panel">
+					<p>スレッドが見つかりません。</p>
+				</section>
+			) : (
+				<PostsPane
+					topicId={topicId ?? null}
+					topic={topic}
+					limit={limit}
+					offset={offset}
+					onOffsetChange={setOffset}
+					onTopicRefresh={loadTopic}
+				/>
+			)}
+		</div>
+	);
+};
 
 export default function App() {
-  return (
-    <Routes>
-      <Route path="/" element={<Root />} />
-      <Route path="/topics">
-        <Route index element={<Root />} />
-        <Route path=":id" element={<Root />} />
-      </Route>
-      <Route path="*" element={<div className="panel" style={{ padding: 24 }}>Not Found</div>} />
-    </Routes>
-  );
+	return (
+		<Routes>
+			<Route path="/" element={<TopicsPage />} />
+			<Route path="/topics" element={<TopicsPage />} />
+			<Route path="/topics/:id" element={<TopicDetailPage />} />
+			<Route
+				path="*"
+				element={
+					<div className="page">
+						<section className="panel" style={{ padding: 24 }}>Not Found</section>
+					</div>
+				}
+				/>
+		</Routes>
+	);
 }
