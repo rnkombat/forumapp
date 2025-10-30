@@ -242,6 +242,7 @@ const TopicDetailPage = () => {
 				</section>
 			) : (
 				<PostsPane
+					topicId={topicId ?? null}
 					topic={topic}
 					limit={limit}
 					offset={offset}
@@ -257,10 +258,8 @@ export default function App() {
 	return (
 		<Routes>
 			<Route path="/" element={<TopicsPage />} />
-			<Route path="/topics">
-				<Route index element={<TopicsPage />} />
-				<Route path=":id" element={<TopicDetailPage />} />
-			</Route>
+			<Route path="/topics" element={<TopicsPage />} />
+			<Route path="/topics/:id" element={<TopicDetailPage />} />
 			<Route
 				path="*"
 				element={
@@ -268,7 +267,7 @@ export default function App() {
 						<section className="panel" style={{ padding: 24 }}>Not Found</section>
 					</div>
 				}
-			/>
+				/>
 		</Routes>
 	);
 }

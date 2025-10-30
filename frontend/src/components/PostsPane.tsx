@@ -31,6 +31,7 @@ const renderPostBody = (post: Post) => {
 };
 
 type PostsPaneProps = {
+	topicId: number | null;
 	topic: Topic | null;
 	limit: number;
 	offset: number;
@@ -38,13 +39,13 @@ type PostsPaneProps = {
 	onTopicRefresh: () => Promise<void>;
 };
 
-export const PostsPane = ({ topic, limit, offset, onOffsetChange, onTopicRefresh }: PostsPaneProps) => {
+export const PostsPane = ({ topicId, topic, limit, offset, onOffsetChange, onTopicRefresh }: PostsPaneProps) => {
 	const [newBody, setNewBody] = useState("");
 	const [status, setStatus] = useState<{ kind: "error" | "info"; message: string } | null>(null);
 	const [submitting, setSubmitting] = useState(false);
-	const topicId = topic?.id ?? null;
+	const activeTopicId = typeof topicId === "number" ? topicId : topic?.id ?? null;
 	const safeLimit = useMemo(() => ensurePositive(limit), [limit]);
-	const { posts, total, loading, refresh } = usePosts(topicId, safeLimit, offset);
+	const { posts, total, loading, refresh } = usePosts(activeTopicId, safeLimit, offset);
 	const remaining = MAX_BODY_LENGTH - newBody.length;
 	const isTooLong = remaining < 0;
 	const reachedLimit = Boolean(topic && (topic.locked || total >= MAX_POSTS_PER_TOPIC));
@@ -61,30 +62,30 @@ export const PostsPane = ({ topic, limit, offset, onOffsetChange, onTopicRefresh
 	const canNext = useMemo(() => currentPage < totalPages, [currentPage, totalPages]);
 
 	useEffect(() => {
-	if (!topicId) {
+	if (!activeTopicId) {
 	if (offset !== 0) {
-	onOffsetChange(0);
+		onOffsetChange(0);
 	}
 	return;
 	}
 
 	if (total === 0 && offset !== 0) {
-	onOffsetChange(0);
+		onOffsetChange(0);
 	return;
 	}
 
 	const maxOffset = Math.max(0, (totalPages - 1) * safeLimit);
 
 	if (offset > maxOffset) {
-	onOffsetChange(maxOffset);
+		onOffsetChange(maxOffset);
 	}
-	}, [topicId, total, offset, onOffsetChange, totalPages, safeLimit]);
+	}, [activeTopicId, total, offset, onOffsetChange, totalPages, safeLimit]);
 
 	useEffect(() => {
 	// スレッド切り替え時にフォーム状態をリセットする
 	setNewBody("");
 	setStatus(null);
-	}, [topicId]);
+	}, [activeTopicId]);
 
 	const syncRefresh = useCallback(async () => {
 	await refresh();
@@ -95,7 +96,7 @@ export const PostsPane = ({ topic, limit, offset, onOffsetChange, onTopicRefresh
 	return;
 	}
 
-	onOffsetChange(getNextOffset(offset, safeLimit, "prev"));
+		onOffsetChange(getNextOffset(offset, safeLimit, "prev"));
 	}, [canPrev, offset, onOffsetChange, safeLimit]);
 
 	const handleNext = useCallback(() => {
@@ -103,7 +104,7 @@ export const PostsPane = ({ topic, limit, offset, onOffsetChange, onTopicRefresh
 	return;
 	}
 
-	onOffsetChange(getNextOffset(offset, safeLimit, "next"));
+		onOffsetChange(getNextOffset(offset, safeLimit, "next"));
 	}, [canNext, offset, onOffsetChange, safeLimit]);
 
 	const handleBodyChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -117,7 +118,7 @@ export const PostsPane = ({ topic, limit, offset, onOffsetChange, onTopicRefresh
 	async (event: FormEvent) => {
 	event.preventDefault();
 
-	if (!topicId) {
+	if (!activeTopicId) {
 	return;
 	}
 
@@ -134,7 +135,7 @@ export const PostsPane = ({ topic, limit, offset, onOffsetChange, onTopicRefresh
 	setSubmitting(true);
 
 	try {
-	await createPost(topicId, text);
+	await createPost(activeTopicId, text);
 	setNewBody("");
 	setStatus({ kind: "info", message: "投稿しました。" });
 	await syncRefresh();
@@ -150,7 +151,7 @@ export const PostsPane = ({ topic, limit, offset, onOffsetChange, onTopicRefresh
 	setSubmitting(false);
 	}
 	},
-	[newBody, isTooLong, onTopicRefresh, syncRefresh, topicId],
+	[newBody, isTooLong, onTopicRefresh, syncRefresh, activeTopicId],
 	);
 
 	const handleDeletePost = useCallback(
@@ -176,12 +177,12 @@ export const PostsPane = ({ topic, limit, offset, onOffsetChange, onTopicRefresh
 	[onTopicRefresh, syncRefresh],
 	);
 
-	const disableForm = submitting || !topicId || reachedLimit;
+	const disableForm = submitting || activeTopicId === null || reachedLimit;
 	const showLimitNotice = reachedLimit;
 
-        return (
-                <section className="panel">
-                        <h2>{topic ? `「${topic.title}」の投稿` : "Posts"}</h2>
+	return (
+		<section className="panel">
+			<h2>{topic ? `「${topic.title}」の投稿` : "Posts"}</h2>
 
 			{!topic ? (
 				<p>Select a topic</p>
@@ -212,23 +213,21 @@ export const PostsPane = ({ topic, limit, offset, onOffsetChange, onTopicRefresh
 						</div>
 						<div className="formActions">
 							<button type="submit" className="btn-primary" disabled={disableForm || !newBody.trim() || isTooLong}>
-							Post
+								Post
 							</button>
 						</div>
 					</form>
 					<div className="toolbar">
 						<button onClick={handlePrev} disabled={!canPrev}>
-						Prev
+							Prev
 						</button>
 						<span>Page {currentPage} / {totalPages} (total {total})</span>
 						<button onClick={handleNext} disabled={!canNext}>
-						Next
+							Next
 						</button>
 						<span className="pageSizeHint">1ページ10件表示</span>
 					</div>
-					{showLimitNotice ? (
-						<div className="limitNotice">{LIMIT_NOTICE_MESSAGE}</div>
-					) : null}
+					{showLimitNotice ? <div className="limitNotice">{LIMIT_NOTICE_MESSAGE}</div> : null}
 					{loading ? (
 						<p>Loading posts...</p>
 					) : posts.length === 0 ? (
@@ -240,7 +239,7 @@ export const PostsPane = ({ topic, limit, offset, onOffsetChange, onTopicRefresh
 									{renderPostBody(post)}
 									<div className="actions">
 										<button className="btn-danger" onClick={() => handleDeletePost(post)}>
-										Delete
+											Delete
 										</button>
 									</div>
 								</li>
