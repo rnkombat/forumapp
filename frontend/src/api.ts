@@ -51,6 +51,11 @@ export async function getTopics(): Promise<Topic[]> {
 	return http<Topic[]>("/api/topics");
 }
 
+export async function getTopic(id: number): Promise<Topic> {
+	// 個別スレッドの情報を取得
+	return http<Topic>(`/api/topics/${id}`);
+}
+
 export async function createTopic(title: string, summary: string | null) {
 	return http<Topic>("/api/topics", {
 		method: "POST",
