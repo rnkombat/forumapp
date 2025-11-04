@@ -1,4 +1,4 @@
-const { pool, initializeDatabase } = require('./db');
+const { pool } = require('./db');
 
 const express = require('express');
 const path = require('path');
@@ -11,11 +11,6 @@ const usersRouter = require('./routes/users');
 const topicsRouter = require('./routes/topics');
 
 const app = express();
-
-	initializeDatabase().catch((err) => {
-		console.error('Failed to initialize database', err);
-		process.exit(1);
-	});
 
 app.use(cors());
 app.use(logger('dev'));
