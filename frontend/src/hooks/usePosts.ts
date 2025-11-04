@@ -25,12 +25,14 @@ export const usePosts = (topicId: number | null, limit: number, offset: number):
 	}, []);
 
 	const fetchPosts = useCallback(async () => {
-		if (topicId === null) {
-			if (isMountedRef.current) {
-				setPosts([]);
-				setTotal(0);
-				setLoading(false);
+		if (!topicId) {
+			if (!isMountedRef.current) {
+				return;
 			}
+
+			setPosts([]);
+			setTotal(0);
+			setLoading(false);
 			return;
 		}
 
@@ -47,13 +49,6 @@ export const usePosts = (topicId: number | null, limit: number, offset: number):
 
 			setPosts(data.items);
 			setTotal(data.total);
-		} catch (error) {
-			console.error("posts fetch failed", error);
-			if (!isMountedRef.current) {
-				return;
-			}
-			setPosts([]);
-			setTotal(0);
 		} finally {
 			if (isMountedRef.current) {
 				setLoading(false);
