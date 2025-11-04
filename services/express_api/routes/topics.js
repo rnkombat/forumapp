@@ -15,18 +15,12 @@ router.get('/', async (req, res, next) => {
 
 // 個別スレッドの詳細を取得するためのエンドポイント
 router.get('/:id', async (req, res, next) => {
-	const topicId = Number.parseInt(req.params.id, 10);
-
-	if (!Number.isInteger(topicId) || topicId <= 0) {
-		return res.status(400).json({ error: 'invalid topic id' });
-	}
-
 	try {
 		const result = await pool.query(
 			`SELECT id, title, summary, posts_count, locked, deleted_at
 			FROM topics
 			WHERE id = $1 AND deleted_at IS NULL`,
-			[topicId]
+			[req.params.id]
 		);
 		if (!result.rows.length) return res.status(404).json({ error: 'Not Found' });
 		res.json(result.rows[0]);
@@ -53,22 +47,16 @@ router.post('/', async (req, res, next) => {
 });
 
 router.patch('/:id', async (req, res, next) => {
-	const topicId = Number.parseInt(req.params.id, 10);
-
-	if (!Number.isInteger(topicId) || topicId <= 0) {
-		return res.status(400).json({ error: 'invalid topic id' });
-	}
-
 	try {
 		const { title, summary, locked } = req.body;
 		const r = await pool.query(
 			`UPDATE topics
-		     SET title = COALESCE($1, title),
-		        summary = COALESCE($2, summary),
-		        locked = COALESCE($3, locked)
-	WHERE id = $4 AND deleted_at IS NULL
-	RETURNING *`,
-			[title ?? null, summary ?? null, locked ?? null, topicId]
+			     SET title = COALESCE($1, title),
+			        summary = COALESCE($2, summary),
+			        locked = COALESCE($3, locked)
+		WHERE id = $4 AND deleted_at IS NULL
+		RETURNING *`,
+			[title ?? null, summary ?? null, locked ?? null, req.params.id]
 		);
 		if (!r.rows.length) return res.status(404).json({ error: 'Not Found' });
 		res.json(r.rows[0]);
@@ -78,17 +66,11 @@ router.patch('/:id', async (req, res, next) => {
 });
 
 router.delete('/:id', async (req, res, next) => {
-	const topicId = Number.parseInt(req.params.id, 10);
-
-	if (!Number.isInteger(topicId) || topicId <= 0) {
-		return res.status(400).json({ error: 'invalid topic id' });
-	}
-
 	try {
 		const r = await pool.query(
 			`UPDATE topics SET deleted_at = NOW()
- WHERE id = $1 AND deleted_at IS NULL RETURNING id`,
-			[topicId]
+		 WHERE id = $1 AND deleted_at IS NULL RETURNING id`,
+			[req.params.id]
 		);
 		if (!r.rows.length) return res.status(404).json({ error: 'Not Found' });
 		res.status(204).end();

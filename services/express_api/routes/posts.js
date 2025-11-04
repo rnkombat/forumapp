@@ -100,7 +100,7 @@ router.post('/', async (req, res, next) => {
 		if (shouldAppendLimitNotice) {
 			// 上限に達したタイミングで自動メッセージを 1 件追加し、スレッドをロックする
 			await client.query(
-				'INSERT INTO posts (topic_id, body, system) VALUES ($1, $2, TRUE)',
+				'INSERT INTO posts (topic_id, body) VALUES ($1, $2)',
 				[topicId, LIMIT_NOTICE_MESSAGE]
 			);
 			await client.query(
