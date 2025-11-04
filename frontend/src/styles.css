@@ -14,46 +14,11 @@
 
 body { margin: 0; background: var(--bg); font-family: var(--font); }
 
-.page {
-	display: flex;
-	flex-direction: column;
-	gap: var(--gap);
-	padding: var(--gap);
-}
-
 .layout {
 	display: grid;
 	grid-template-columns: 1fr 2fr;
 	gap: var(--gap);
 	padding: var(--gap);
-}
-
-.pageHeader {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-	margin-bottom: 8px;
-}
-
-.backLink {
-	color: #195efb;
-	text-decoration: none;
-	font-weight: 600;
-}
-
-.backLink:hover {
-	text-decoration: underline;
-}
-
-.topicDetailPage {
-	max-width: 960px;
-	width: 100%;
-	margin: 0 auto;
-}
-
-.topicDetailPage > .panel {
-	width: 100%;
 }
 
 .panel h2 { margin: 0 0 8px 0; }

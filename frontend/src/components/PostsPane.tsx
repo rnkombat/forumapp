@@ -179,9 +179,9 @@ export const PostsPane = ({ topic, limit, offset, onOffsetChange, onTopicRefresh
 	const disableForm = submitting || !topicId || reachedLimit;
 	const showLimitNotice = reachedLimit;
 
-        return (
-                <section className="panel">
-                        <h2>{topic ? `「${topic.title}」の投稿` : "Posts"}</h2>
+	return (
+		<section className="panel">
+			<h2>Posts {topicId ? `in #${topicId}` : ""}</h2>
 
 			{!topic ? (
 				<p>Select a topic</p>
